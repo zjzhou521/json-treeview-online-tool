@@ -1,6 +1,6 @@
-# JSON Tree Viewer
+# JSON Tree Online Viewer
 
-A private, browser-based JSON tree viewer. Paste JSON or open a local file, then explore, search, copy paths and values, format, minify, or download the parsed data. No data is sent to a server.
+A private, browser-based JSON tree free online viewer. Paste JSON or open a local file, then explore, search, copy paths and values, format, minify, or download the parsed data. No data is sent to a server.
 
 ## Run locally
 
