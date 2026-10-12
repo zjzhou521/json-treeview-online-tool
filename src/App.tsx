@@ -25,6 +25,9 @@ import {
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
 type Path = (string | number)[]
 type ParseIssue = { message: string; location?: string }
+type ExpansionPreset = 0 | 1 | 2 | 3 | 4 | 'all'
+
+const DEFAULT_EXPANSION: ExpansionPreset = 2
 
 const SAMPLE = `{
   "project": "Northstar API",
@@ -84,10 +87,17 @@ function getIssue(error: unknown, source: string): ParseIssue {
   return { message }
 }
 
-function initialExpanded(value: JsonValue) {
-  const ids = new Set<string>([pathId([])])
-  for (const [key, child] of entriesOf(value)) {
-    if (isContainer(child)) ids.add(pathId([key]))
+function expandedFor(value: JsonValue, preset: ExpansionPreset) {
+  if (preset === 'all') return allExpandable(value)
+  const ids = new Set<string>()
+  const stack: { value: JsonValue; path: Path }[] = [{ value, path: [] }]
+  while (stack.length) {
+    const item = stack.pop()!
+    if (!isContainer(item.value) || item.path.length >= preset) continue
+    ids.add(pathId(item.path))
+    for (const [key, child] of entriesOf(item.value)) {
+      stack.push({ value: child, path: [...item.path, key] })
+    }
   }
   return ids
 }
@@ -310,7 +320,8 @@ export default function App() {
   const [hasParsed, setHasParsed] = useState(true)
   const [dirty, setDirty] = useState(false)
   const [issue, setIssue] = useState<ParseIssue | null>(null)
-  const [expanded, setExpanded] = useState(() => initialExpanded(INITIAL_VALUE))
+  const [expansionPreset, setExpansionPreset] = useState<ExpansionPreset>(DEFAULT_EXPANSION)
+  const [expanded, setExpanded] = useState(() => expandedFor(INITIAL_VALUE, DEFAULT_EXPANSION))
   const [selectedPath, setSelectedPath] = useState<Path>([])
   const [query, setQuery] = useState('')
   const [toast, setToast] = useState('')
@@ -349,7 +360,7 @@ export default function App() {
       setHasParsed(true)
       setDirty(false)
       setIssue(null)
-      setExpanded(initialExpanded(parsed))
+      setExpanded(expandedFor(parsed, expansionPreset))
       setSelectedPath([])
       setQuery('')
       showToast('JSON parsed successfully')
@@ -378,7 +389,7 @@ export default function App() {
     setHasParsed(true)
     setDirty(false)
     setIssue(null)
-    setExpanded(initialExpanded(INITIAL_VALUE))
+    setExpanded(expandedFor(INITIAL_VALUE, expansionPreset))
     setSelectedPath([])
     setQuery('')
     showToast('Sample restored')
@@ -418,6 +429,11 @@ export default function App() {
       else next.add(id)
       return next
     })
+  }
+
+  function applyExpansion(preset: ExpansionPreset) {
+    setExpansionPreset(preset)
+    setExpanded(expandedFor(value, preset))
   }
 
   return (
@@ -676,12 +692,33 @@ export default function App() {
                     </button>
                   )}
                 </div>
+                <label className="tree-depth-control">
+                  <span>Auto-expand</span>
+                  <select
+                    value={expansionPreset}
+                    onChange={(event) =>
+                      applyExpansion(
+                        event.target.value === 'all'
+                          ? 'all'
+                          : (Number(event.target.value) as ExpansionPreset),
+                      )
+                    }
+                    title="Applies now and after each parse"
+                  >
+                    <option value={0}>Collapse all</option>
+                    <option value={1}>1 level</option>
+                    <option value={2}>2 levels</option>
+                    <option value={3}>3 levels</option>
+                    <option value={4}>4 levels</option>
+                    <option value="all">All levels</option>
+                  </select>
+                </label>
                 <div className="tree-actions">
                   <button
                     type="button"
                     title="Expand all"
                     aria-label="Expand all"
-                    onClick={() => setExpanded(allExpandable(value))}
+                    onClick={() => applyExpansion('all')}
                     disabled={!hasParsed}
                   >
                     <Maximize2 size={16} />
@@ -690,7 +727,7 @@ export default function App() {
                     type="button"
                     title="Collapse all"
                     aria-label="Collapse all"
-                    onClick={() => setExpanded(new Set([pathId([])]))}
+                    onClick={() => applyExpansion(0)}
                     disabled={!hasParsed}
                   >
                     <FoldVertical size={16} />

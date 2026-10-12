@@ -319,7 +319,7 @@ h1 em {
 }
 .panel-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 .panel {
@@ -329,9 +329,14 @@ h1 em {
   box-shadow: 0 12px 32px #1d49340a;
   border-radius: 16px;
   overflow: hidden;
-  height: 618px;
   display: flex;
   flex-direction: column;
+}
+.editor-panel {
+  height: 520px;
+}
+.viewer-panel {
+  height: auto;
 }
 .panel-header {
   height: 72px;
@@ -573,10 +578,11 @@ textarea::placeholder {
   border-left: 1px solid #4b776e;
 }
 .viewer-toolbar {
-  height: 60px;
+  min-height: 60px;
   flex: none;
   padding: 10px 17px;
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
   border-bottom: 1px solid #edf0eb;
@@ -591,7 +597,8 @@ textarea::placeholder {
   gap: 8px;
   padding: 0 11px;
   color: #91a69a;
-  flex: 1;
+  flex: 1 1 260px;
+  min-width: 0;
 }
 .search-box:focus-within {
   border-color: #79af8b;
@@ -612,14 +619,39 @@ textarea::placeholder {
 .search-box button {
   padding: 3px;
 }
+.tree-depth-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #7b9184;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tree-depth-control select {
+  height: 36px;
+  border: 1px solid #e2eae3;
+  border-radius: 7px;
+  background: #f9fbf8;
+  color: #315a4e;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.tree-depth-control select:focus-visible {
+  outline: 2px solid #70a77c;
+  outline-offset: 2px;
+}
 .tree-actions button {
   height: 34px;
   width: 33px;
   border-radius: 7px;
 }
 .tree-surface {
-  flex: 1;
-  overflow: auto;
+  flex: none;
+  min-height: 220px;
+  overflow: visible;
   background: repeating-linear-gradient(0deg, #fff, #fff 31px, #fbfcfb 32px);
   padding: 17px 15px 24px;
 }
@@ -628,10 +660,10 @@ textarea::placeholder {
     12px/1.55 'DM Mono',
     ui-monospace,
     monospace;
-  min-width: max-content;
+  min-width: 0;
 }
 .tree-node {
-  min-width: fit-content;
+  min-width: 0;
 }
 .tree-row {
   height: auto;
@@ -641,8 +673,8 @@ textarea::placeholder {
   align-items: flex-start;
   gap: 6px;
   border-radius: 6px;
-  white-space: pre;
-  min-width: fit-content;
+  white-space: normal;
+  min-width: 0;
   outline: none;
   color: #3e5a57;
   position: relative;
@@ -693,6 +725,7 @@ textarea::placeholder {
 }
 .tree-key {
   color: #53716a;
+  overflow-wrap: anywhere;
 }
 .tree-index {
   color: #a17e5b;
@@ -710,7 +743,7 @@ textarea::placeholder {
   margin-left: 4px;
 }
 .tree-value {
-  max-width: 550px;
+  min-width: 0;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -973,11 +1006,8 @@ textarea::placeholder {
     min-width: 100px;
     padding-left: 14px;
   }
-  .panel {
-    height: 600px;
-  }
-  .tree-value {
-    max-width: 360px;
+  .editor-panel {
+    height: 500px;
   }
 }
 @media (max-width: 760px) {
@@ -1010,14 +1040,8 @@ textarea::placeholder {
   .workspace-hint {
     display: none;
   }
-  .panel-grid {
-    grid-template-columns: 1fr;
-  }
-  .panel {
-    height: 520px;
-  }
-  .viewer-panel {
-    height: 570px;
+  .search-box {
+    flex-basis: 100%;
   }
   .summary-strip {
     padding: 16px;
