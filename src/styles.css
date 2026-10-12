@@ -124,7 +124,7 @@ main {
   margin: auto;
 }
 .intro {
-  padding: 52px 0 40px;
+  padding: 8px 0 56px;
   position: relative;
 }
 .eyebrow,
@@ -174,7 +174,7 @@ h3 {
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-h1 {
+.intro-title {
   font-size: clamp(40px, 4.4vw, 56px);
   line-height: 1.07;
   letter-spacing: -0.022em;
@@ -182,7 +182,7 @@ h1 {
   font-weight: 600;
   color: var(--ink);
 }
-h1 em {
+.intro-title em {
   font-style: normal;
   color: var(--muted);
 }
@@ -243,54 +243,12 @@ h1 em {
   transform: rotate(-8deg);
   background: #fff;
   border: 1px solid var(--line);
-  padding: 27px 31px;
+  padding: 16px 14px 12px;
 }
-.deco-node {
+.deco-tree {
+  width: 100%;
+  height: 100%;
   display: block;
-  width: 24px;
-  height: 24px;
-  background: #1d1d1f;
-  border: 6px solid #d2d2d7;
-  border-radius: 50%;
-  margin-left: 48px;
-  position: relative;
-}
-.deco-node:after {
-  content: '';
-  position: absolute;
-  width: 2px;
-  height: 28px;
-  background: #86868b;
-  top: 18px;
-  left: 5px;
-}
-.deco-branch {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin: 34px 0 0 10px;
-}
-.deco-branch i {
-  width: 16px;
-  height: 16px;
-  background: #0071e3;
-  border-radius: 50%;
-  display: block;
-}
-.deco-branch b {
-  height: 3px;
-  width: 65px;
-  background: #d2d2d7;
-  border-radius: 20px;
-}
-.deco-branch.last {
-  margin-top: 24px;
-}
-.deco-branch.last i:first-child {
-  background: #1d1d1f;
-}
-.deco-branch.last i:last-child {
-  background: #0071e3;
 }
 .orbit {
   position: absolute;
@@ -311,7 +269,8 @@ h1 em {
   height: 7px;
 }
 .workspace {
-  padding-bottom: 70px;
+  padding-top: 40px;
+  padding-bottom: 48px;
 }
 .workspace-heading {
   display: flex;
@@ -1036,7 +995,7 @@ textarea::placeholder {
     display: none;
   }
   .intro {
-    padding: 44px 0 35px;
+    padding: 4px 0 40px;
   }
   .intro-grid {
     display: block;
@@ -1045,7 +1004,7 @@ textarea::placeholder {
   .hero-decoration {
     display: none;
   }
-  h1 {
+  .intro-title {
     letter-spacing: -0.022em;
     font-size: clamp(36px, 8vw, 48px);
   }
