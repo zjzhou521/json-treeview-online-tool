@@ -1,4 +1,4 @@
-# JSON Atlas
+# JSON Tree Viewer
 
 A private, browser-based JSON tree viewer. Paste JSON or open a local file, then explore, search, copy paths and values, format, minify, or download the parsed data. No data is sent to a server.
 
@@ -20,3 +20,5 @@ The workflow in `.github/workflows/deploy.yml` builds and deploys on every push 
 https://zjzhou521.github.io/json-treeview-online-tool/
 
 The production build uses `/json-treeview-online-tool/` as its asset base path. If you rename the repository, update `vite.config.ts` and the URL above.
+
+If `actions/configure-pages` reports `Get Pages site failed ... Not Found`, the one-time Pages source setting above has not been enabled yet. The workflow's default `GITHUB_TOKEN` cannot use the action's `enablement: true` option to make that change automatically. After selecting **GitHub Actions** in Settings, rerun the workflow or push another commit.

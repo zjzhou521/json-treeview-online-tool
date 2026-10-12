@@ -423,13 +423,12 @@ export default function App() {
   return (
     <div className="site-shell">
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="JSON Atlas home">
+        <a className="brand" href="#top" aria-label="JSON Tree Viewer home">
           <span className="brand-mark">
             <Braces size={23} strokeWidth={2.5} />
           </span>
           <span>
-            json<span className="brand-accent">atlas</span>
-            <span className="brand-dot">.</span>
+            JSON <span className="brand-accent">Tree</span> Viewer
           </span>
         </a>
         <div className="header-right">
@@ -811,7 +810,7 @@ export default function App() {
       </main>
       <footer className="site-footer">
         <span className="footer-brand">
-          json<span>atlas</span>.
+          JSON <span>Tree</span> Viewer
         </span>
         <span>Made for curious data explorers.</span>
         <span>
