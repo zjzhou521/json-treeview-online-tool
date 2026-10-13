@@ -76,6 +76,8 @@ const typeOf = (value: JsonValue) =>
 				? "object"
 				: typeof value;
 const valueAsText = (value: JsonValue) => JSON.stringify(value, null, 2);
+const copiedValue = (value: JsonValue) =>
+	typeof value === "string" ? value : valueAsText(value);
 const pathAsText = (path: Path) =>
 	path.reduce<string>((text, part) => {
 		if (typeof part === "number") return `${text}[${part}]`;
@@ -271,47 +273,49 @@ function TreeNode({
 					</span>
 				)}
 				<span className="tree-colon">:</span>
-				{container ? (
-					<>
-						<span className="tree-bracket">
-							{Array.isArray(value) ? "[" : "{"}
+				<span className="tree-value-wrap">
+					<button
+						className="row-copy"
+						type="button"
+						aria-label={`Copy value at ${pathAsText(path)}`}
+						title="Copy value"
+						onClick={(event) => {
+							event.stopPropagation();
+							copy(copiedValue(value), "Value copied");
+						}}
+					>
+						<Copy size={14} />
+					</button>
+					{container ? (
+						<>
+							<span className="tree-bracket">
+								{Array.isArray(value) ? "[" : "{"}
+							</span>
+							{!open && (
+								<span className="collapsed-preview">
+									{children.length === 0
+										? ""
+										: `${children.length} ${Array.isArray(value) ? "items" : "keys"}`}
+								</span>
+							)}
+							{!open && (
+								<span className="tree-bracket">
+									{Array.isArray(value) ? "]" : "}"}
+								</span>
+							)}
+							{open && children.length === 0 && (
+								<span className="tree-bracket">
+									{Array.isArray(value) ? "]" : "}"}
+								</span>
+							)}
+						</>
+					) : (
+						<span className={`tree-value type-${kind}`}>
+							{kind === "string" ? JSON.stringify(value) : String(value)}
 						</span>
-						{!open && (
-							<span className="collapsed-preview">
-								{children.length === 0
-									? ""
-									: `${children.length} ${Array.isArray(value) ? "items" : "keys"}`}
-							</span>
-						)}
-						{!open && (
-							<span className="tree-bracket">
-								{Array.isArray(value) ? "]" : "}"}
-							</span>
-						)}
-						{open && children.length === 0 && (
-							<span className="tree-bracket">
-								{Array.isArray(value) ? "]" : "}"}
-							</span>
-						)}
-					</>
-				) : (
-					<span className={`tree-value type-${kind}`}>
-						{kind === "string" ? JSON.stringify(value) : String(value)}
-					</span>
-				)}
+					)}
+				</span>
 				<span className={`type-pill type-pill-${kind}`}>{kind}</span>
-				<button
-					className="row-copy"
-					type="button"
-					aria-label={`Copy value at ${pathAsText(path)}`}
-					title="Copy value"
-					onClick={(event) => {
-						event.stopPropagation();
-						copy(valueAsText(value), "Value copied");
-					}}
-				>
-					<Copy size={14} />
-				</button>
 			</div>
 			{container && open && children.length > 0 && (
 				<div className="tree-children" role="group">

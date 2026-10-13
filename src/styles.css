@@ -691,10 +691,27 @@ textarea::placeholder {
   color: var(--ink);
   font-weight: 700;
 }
+.tree-key,
+.tree-index,
+.root-label,
+.tree-colon,
+.tree-bracket,
+.collapsed-preview,
+.type-pill,
+.row-copy {
+  flex: none;
+  white-space: nowrap;
+}
+.tree-key,
+.tree-index,
+.root-label {
+  min-width: max-content;
+  overflow-wrap: normal;
+  word-break: normal;
+}
 .tree-key {
   color: var(--ink);
   font-weight: 700;
-  overflow-wrap: anywhere;
 }
 .tree-index {
   color: #9a3412;
@@ -713,6 +730,14 @@ textarea::placeholder {
   font-size: 12.5px;
   font-weight: 500;
   margin-left: 4px;
+}
+.tree-value-wrap {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 .tree-value {
   min-width: 0;
@@ -751,14 +776,22 @@ textarea::placeholder {
 }
 .row-copy {
   visibility: hidden;
+  flex: 0 0 0;
+  width: 0;
+  min-width: 0;
+  height: 20px;
   border-radius: 5px;
-  padding: 3px;
-  margin-left: 5px;
+  padding: 0;
+  margin: 1px 0 0;
+  overflow: hidden;
 }
 .tree-row:hover .row-copy,
 .tree-row:focus-within .row-copy,
 .tree-row.selected .row-copy {
   visibility: visible;
+  flex: 0 0 20px;
+  width: 20px;
+  overflow: visible;
 }
 .row-copy:hover {
   color: var(--ink);
