@@ -95,6 +95,29 @@ const httpUrl = (value: string) => {
 		return null;
 	}
 };
+const IMAGE_PATH = /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif|tiff?|ico)$/i;
+const signedImageDownload = (value: string) => {
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		return false;
+	}
+	if (!IMAGE_PATH.test(url.pathname)) return false;
+	const keys = new Set(
+		[...url.searchParams.keys()].map((key) => key.toLowerCase()),
+	);
+	if (
+		keys.has("signature") ||
+		keys.has("x-oss-signature") ||
+		keys.has("x-amz-signature") ||
+		keys.has("x-goog-signature") ||
+		keys.has("q-signature")
+	) {
+		return true;
+	}
+	return keys.has("sig") && (keys.has("se") || keys.has("sv"));
+};
 
 function getIssue(error: unknown, source: string): ParseIssue {
 	const message =
@@ -231,6 +254,7 @@ function TreeNode({
 	const open = expanded.has(id) || (!!query && ancestors.has(id));
 	const kind = typeOf(value);
 	const href = typeof value === "string" ? httpUrl(value) : null;
+	const directDownload = href !== null && signedImageDownload(href);
 	const isMatch = matches.has(id);
 	const includeAll = showAll || isMatch;
 
@@ -326,8 +350,9 @@ function TreeNode({
 							<a
 								className="tree-link"
 								href={href}
-								target="_blank"
-								rel="noreferrer noopener"
+								target={directDownload ? "_self" : "_blank"}
+								rel={directDownload ? "noreferrer" : "noreferrer noopener"}
+								title={directDownload ? "Download image" : undefined}
 								onClick={(event) => event.stopPropagation()}
 							>
 								{JSON.stringify(value).slice(1, -1)}
