@@ -118,6 +118,11 @@ const signedImageDownload = (value: string) => {
 	}
 	return keys.has("sig") && (keys.has("se") || keys.has("sv"));
 };
+const downloadUrl = (value: string) => {
+	if (typeof window === "undefined" || window.location.protocol !== "https:")
+		return value;
+	return value.replace(/^http:\/\//i, "https://");
+};
 
 function getIssue(error: unknown, source: string): ParseIssue {
 	const message =
@@ -349,7 +354,7 @@ function TreeNode({
 							"
 							<a
 								className="tree-link"
-								href={href}
+								href={directDownload ? downloadUrl(href) : href}
 								target={directDownload ? "_self" : "_blank"}
 								rel={directDownload ? "noreferrer" : "noreferrer noopener"}
 								title={directDownload ? "Download image" : undefined}
