@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ClipboardEvent } from "react";
 import {
 	Braces,
 	Check,
@@ -85,6 +85,16 @@ const pathAsText = (path: Path) =>
 			? `${text}.${part}`
 			: `${text}[${JSON.stringify(part)}]`;
 	}, "$");
+const httpUrl = (value: string) => {
+	const text = value.trim();
+	if (!/^https?:\/\//i.test(text)) return null;
+	try {
+		const url = new URL(text);
+		return url.protocol === "http:" || url.protocol === "https:" ? text : null;
+	} catch {
+		return null;
+	}
+};
 
 function getIssue(error: unknown, source: string): ParseIssue {
 	const message =
@@ -220,6 +230,7 @@ function TreeNode({
 	const children = entriesOf(value);
 	const open = expanded.has(id) || (!!query && ancestors.has(id));
 	const kind = typeOf(value);
+	const href = typeof value === "string" ? httpUrl(value) : null;
 	const isMatch = matches.has(id);
 	const includeAll = showAll || isMatch;
 
@@ -309,6 +320,20 @@ function TreeNode({
 								</span>
 							)}
 						</>
+					) : href ? (
+						<span className="tree-value type-string">
+							"
+							<a
+								className="tree-link"
+								href={href}
+								target="_blank"
+								rel="noreferrer noopener"
+								onClick={(event) => event.stopPropagation()}
+							>
+								{JSON.stringify(value).slice(1, -1)}
+							</a>
+							"
+						</span>
 					) : (
 						<span className={`tree-value type-${kind}`}>
 							{kind === "string" ? JSON.stringify(value) : String(value)}
@@ -352,16 +377,14 @@ function TreeNode({
 }
 
 export default function App() {
-	const [input, setInput] = useState(SAMPLE);
-	const [value, setValue] = useState<JsonValue>(INITIAL_VALUE);
-	const [hasParsed, setHasParsed] = useState(true);
+	const [input, setInput] = useState("");
+	const [value, setValue] = useState<JsonValue>(null);
+	const [hasParsed, setHasParsed] = useState(false);
 	const [dirty, setDirty] = useState(false);
 	const [issue, setIssue] = useState<ParseIssue | null>(null);
 	const [expansionPreset, setExpansionPreset] =
 		useState<ExpansionPreset>(DEFAULT_EXPANSION);
-	const [expanded, setExpanded] = useState(() =>
-		expandedFor(INITIAL_VALUE, DEFAULT_EXPANSION),
-	);
+	const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 	const [selectedPath, setSelectedPath] = useState<Path>([]);
 	const [query, setQuery] = useState("");
 	const [toast, setToast] = useState("");
@@ -396,7 +419,7 @@ export default function App() {
 		}
 	}
 
-	function parse(source = input) {
+	function parse(source = input, announce = true) {
 		try {
 			const parsed = JSON.parse(source) as JsonValue;
 			setValue(parsed);
@@ -406,12 +429,26 @@ export default function App() {
 			setExpanded(expandedFor(parsed, expansionPreset));
 			setSelectedPath([]);
 			setQuery("");
-			showToast("JSON parsed successfully");
+			if (announce) showToast("JSON parsed successfully");
 		} catch (error) {
 			setIssue(getIssue(error, source));
 			setHasParsed(false);
 			setDirty(false);
 		}
+	}
+
+	function pasteIntoInput(event: ClipboardEvent<HTMLTextAreaElement>) {
+		const pasted = event.clipboardData.getData("text");
+		if (!pasted) return;
+		event.preventDefault();
+		const field = event.currentTarget;
+		const start = field.selectionStart ?? input.length;
+		const end = field.selectionEnd ?? input.length;
+		const next = input.slice(0, start) + pasted + input.slice(end);
+		const cursor = start + pasted.length;
+		setInput(next);
+		parse(next, false);
+		requestAnimationFrame(() => field.setSelectionRange(cursor, cursor));
 	}
 
 	function transform(pretty: boolean) {
@@ -515,8 +552,7 @@ export default function App() {
 							<h2>Explore your JSON</h2>
 						</div>
 						<span className="workspace-hint">
-							<Sparkles size={15} /> Start with the sample, or bring your own
-							data
+							<Sparkles size={15} /> Paste JSON, open a file, or load the sample
 						</span>
 					</div>
 					<div className="panel-grid">
@@ -569,6 +605,7 @@ export default function App() {
 							</label>
 							<textarea
 								id="json-input"
+								autoFocus
 								spellCheck={false}
 								value={input}
 								placeholder={'{\n  "hello": "world"\n}'}
@@ -577,6 +614,7 @@ export default function App() {
 									setDirty(true);
 									setIssue(null);
 								}}
+								onPaste={pasteIntoInput}
 								onKeyDown={(event) => {
 									if (
 										(event.metaKey || event.ctrlKey) &&

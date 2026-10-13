@@ -438,6 +438,8 @@ textarea {
   resize: none;
   flex: 1;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border: 0;
   outline: none;
   padding: 20px 23px;
@@ -446,8 +448,11 @@ textarea {
   font:
     13px/1.7 var(--mono);
   tab-size: 2;
-  white-space: pre;
-  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 textarea::placeholder {
   color: var(--faint);
@@ -748,6 +753,15 @@ textarea::placeholder {
 .type-string {
   color: #b42318;
 }
+.tree-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.tree-link:hover {
+  color: var(--blue);
+}
 .type-number {
   color: #5b21b6;
 }
@@ -760,7 +774,7 @@ textarea::placeholder {
   font-weight: 700;
 }
 .type-pill {
-  display: none;
+  visibility: hidden;
   border: 1px solid var(--line);
   border-radius: 4px;
   color: var(--muted);
@@ -772,26 +786,22 @@ textarea::placeholder {
 }
 .tree-row:hover .type-pill,
 .tree-row.selected .type-pill {
-  display: inline-block;
+  visibility: visible;
 }
 .row-copy {
   visibility: hidden;
-  flex: 0 0 0;
-  width: 0;
-  min-width: 0;
+  flex: 0 0 20px;
+  width: 20px;
+  min-width: 20px;
   height: 20px;
   border-radius: 5px;
   padding: 0;
   margin: 1px 0 0;
-  overflow: hidden;
 }
 .tree-row:hover .row-copy,
 .tree-row:focus-within .row-copy,
 .tree-row.selected .row-copy {
   visibility: visible;
-  flex: 0 0 20px;
-  width: 20px;
-  overflow: visible;
 }
 .row-copy:hover {
   color: var(--ink);
