@@ -1,4 +1,10 @@
-import { useMemo, useRef, useState, type ClipboardEvent } from "react";
+import {
+	useMemo,
+	useRef,
+	useState,
+	type ClipboardEvent,
+	type KeyboardEvent,
+} from "react";
 import {
 	Braces,
 	Check,
@@ -34,6 +40,14 @@ type ParseIssue = { message: string; location?: string };
 type ExpansionPreset = 0 | 1 | 2 | 3 | 4 | "all";
 
 const DEFAULT_EXPANSION: ExpansionPreset = 2;
+const EXPANSION_OPTIONS: { value: ExpansionPreset; label: string }[] = [
+	{ value: 0, label: "Collapse all" },
+	{ value: 1, label: "1 level" },
+	{ value: 2, label: "2 levels" },
+	{ value: 3, label: "3 levels" },
+	{ value: 4, label: "4 levels" },
+	{ value: "all", label: "All levels" },
+];
 
 const SAMPLE = `{
   "project": "Northstar API",
@@ -123,6 +137,60 @@ const downloadUrl = (value: string) => {
 		return value;
 	return value.replace(/^http:\/\//i, "https://");
 };
+const embeddedJsonNodes = new WeakSet<object>();
+const MAX_EMBEDDED_JSON_DEPTH = 8;
+const fencedJson = (text: string) => {
+	const match = text.match(/^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```$/i);
+	return match?.[1]?.trim();
+};
+const parseEmbeddedJson = (value: string): JsonValue | undefined => {
+	const text = value.trim().replace(/^\uFEFF/, "");
+	const source = fencedJson(text) ?? text;
+	if (source.length < 2) return undefined;
+	const open = source[0];
+	const close = source.at(-1);
+	if (!((open === "{" && close === "}") || (open === "[" && close === "]")))
+		return undefined;
+	try {
+		const parsed = JSON.parse(source) as JsonValue;
+		return parsed !== null && typeof parsed === "object" ? parsed : undefined;
+	} catch {
+		return undefined;
+	}
+};
+const isEmbeddedJson = (value: JsonValue) =>
+	value !== null && typeof value === "object" && embeddedJsonNodes.has(value);
+function revealEmbeddedJson(value: JsonValue, depth = 0): JsonValue {
+	if (typeof value === "string") {
+		if (depth >= MAX_EMBEDDED_JSON_DEPTH) return value;
+		const parsed = parseEmbeddedJson(value);
+		if (parsed === undefined) return value;
+		const revealed = revealEmbeddedJson(parsed, depth + 1);
+		if (revealed !== null && typeof revealed === "object")
+			embeddedJsonNodes.add(revealed);
+		return revealed;
+	}
+	if (Array.isArray(value)) {
+		let changed = false;
+		const next = value.map((item) => {
+			const revealed = revealEmbeddedJson(item, depth);
+			if (revealed !== item) changed = true;
+			return revealed;
+		});
+		return changed ? next : value;
+	}
+	if (value !== null && typeof value === "object") {
+		let changed = false;
+		const next: { [key: string]: JsonValue } = {};
+		for (const [key, child] of Object.entries(value)) {
+			const revealed = revealEmbeddedJson(child, depth);
+			if (revealed !== child) changed = true;
+			next[key] = revealed;
+		}
+		return changed ? next : value;
+	}
+	return value;
+}
 
 function getIssue(error: unknown, source: string): ParseIssue {
 	const message =
@@ -370,6 +438,14 @@ function TreeNode({
 						</span>
 					)}
 				</span>
+				{isEmbeddedJson(value) && (
+					<span
+						className="embedded-badge"
+						title="This value was stored as a JSON string"
+					>
+						JSON string
+					</span>
+				)}
 				<span className={`type-pill type-pill-${kind}`}>{kind}</span>
 			</div>
 			{container && open && children.length > 0 && (
@@ -420,6 +496,9 @@ export default function App() {
 	const [toast, setToast] = useState("");
 	const fileRef = useRef<HTMLInputElement>(null);
 	const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const depthMenuRef = useRef<HTMLDivElement>(null);
+	const depthTriggerRef = useRef<HTMLButtonElement>(null);
+	const [depthMenuOpen, setDepthMenuOpen] = useState(false);
 
 	const stats = useMemo(
 		() => (hasParsed ? countData(value) : null),
@@ -451,7 +530,7 @@ export default function App() {
 
 	function parse(source = input, announce = true) {
 		try {
-			const parsed = JSON.parse(source) as JsonValue;
+			const parsed = revealEmbeddedJson(JSON.parse(source) as JsonValue);
 			setValue(parsed);
 			setHasParsed(true);
 			setDirty(false);
@@ -546,6 +625,55 @@ export default function App() {
 	function applyExpansion(preset: ExpansionPreset) {
 		setExpansionPreset(preset);
 		setExpanded(expandedFor(value, preset));
+	}
+
+	function focusDepthOption(index: number) {
+		const option = EXPANSION_OPTIONS[index];
+		if (!option) return;
+		depthMenuRef.current
+			?.querySelector<HTMLButtonElement>(`[data-value="${option.value}"]`)
+			?.focus();
+	}
+
+	function openDepthMenu() {
+		const index = Math.max(
+			0,
+			EXPANSION_OPTIONS.findIndex((option) => option.value === expansionPreset),
+		);
+		setDepthMenuOpen(true);
+		requestAnimationFrame(() => focusDepthOption(index));
+	}
+
+	function closeDepthMenu(restoreFocus = false) {
+		setDepthMenuOpen(false);
+		if (restoreFocus) depthTriggerRef.current?.focus();
+	}
+
+	function onDepthOptionKeyDown(
+		event: KeyboardEvent<HTMLButtonElement>,
+		index: number,
+	) {
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			event.preventDefault();
+			const count = EXPANSION_OPTIONS.length;
+			const next =
+				event.key === "ArrowDown"
+					? (index + 1) % count
+					: (index - 1 + count) % count;
+			focusDepthOption(next);
+		}
+		if (event.key === "Home") {
+			event.preventDefault();
+			focusDepthOption(0);
+		}
+		if (event.key === "End") {
+			event.preventDefault();
+			focusDepthOption(EXPANSION_OPTIONS.length - 1);
+		}
+		if (event.key === "Escape") {
+			event.preventDefault();
+			closeDepthMenu(true);
+		}
 	}
 
 	return (
@@ -781,27 +909,88 @@ export default function App() {
 										</button>
 									)}
 								</div>
-								<label className="tree-depth-control">
-									<span>Auto-expand</span>
-									<select
-										value={expansionPreset}
-										onChange={(event) =>
-											applyExpansion(
-												event.target.value === "all"
-													? "all"
-													: (Number(event.target.value) as ExpansionPreset),
-											)
-										}
-										title="Applies now and after each parse"
+								<div className="tree-depth-control">
+									<span id="auto-expand-label">Auto-expand</span>
+									<div
+										className="depth-menu"
+										ref={depthMenuRef}
+										onBlur={(event) => {
+											const next = event.relatedTarget;
+											if (
+												!(next instanceof Node) ||
+												!event.currentTarget.contains(next)
+											) {
+												setDepthMenuOpen(false);
+											}
+										}}
 									>
-										<option value={0}>Collapse all</option>
-										<option value={1}>1 level</option>
-										<option value={2}>2 levels</option>
-										<option value={3}>3 levels</option>
-										<option value={4}>4 levels</option>
-										<option value="all">All levels</option>
-									</select>
-								</label>
+										<button
+											ref={depthTriggerRef}
+											type="button"
+											className={`depth-menu-trigger ${depthMenuOpen ? "open" : ""}`}
+											aria-haspopup="listbox"
+											aria-expanded={depthMenuOpen}
+											aria-controls="auto-expand-list"
+											aria-labelledby="auto-expand-label"
+											title="Applies now and after each parse"
+											onClick={() =>
+												depthMenuOpen ? closeDepthMenu() : openDepthMenu()
+											}
+											onKeyDown={(event) => {
+												if (
+													event.key === "ArrowDown" ||
+													event.key === "Enter" ||
+													event.key === " "
+												) {
+													event.preventDefault();
+													if (!depthMenuOpen) openDepthMenu();
+												}
+												if (event.key === "Escape") closeDepthMenu();
+											}}
+										>
+											<span>
+												{EXPANSION_OPTIONS.find(
+													(option) => option.value === expansionPreset,
+												)?.label ?? "2 levels"}
+											</span>
+											<ChevronDown size={15} aria-hidden="true" />
+										</button>
+										{depthMenuOpen && (
+											<ul
+												id="auto-expand-list"
+												className="depth-menu-list"
+												role="listbox"
+												aria-labelledby="auto-expand-label"
+											>
+												{EXPANSION_OPTIONS.map((option, index) => {
+													const selected = option.value === expansionPreset;
+													return (
+														<li key={String(option.value)} role="presentation">
+															<button
+																type="button"
+																role="option"
+																data-value={option.value}
+																aria-selected={selected}
+																className={selected ? "selected" : ""}
+																onMouseDown={(event) => event.preventDefault()}
+																onClick={() => {
+																	applyExpansion(option.value);
+																	closeDepthMenu(true);
+																}}
+																onKeyDown={(event) =>
+																	onDepthOptionKeyDown(event, index)
+																}
+															>
+																<span>{option.label}</span>
+																{selected && <Check size={14} aria-hidden="true" />}
+															</button>
+														</li>
+													);
+												})}
+											</ul>
+										)}
+									</div>
+								</div>
 								<div className="tree-actions">
 									<button
 										type="button"
@@ -862,7 +1051,11 @@ export default function App() {
 								<div className="inspector-heading">
 									<span>SELECTED PATH</span>
 									<span className="inspector-type">
-										{hasParsed ? typeOf(selectedValue) : "—"}
+										{hasParsed
+											? isEmbeddedJson(selectedValue)
+												? `${typeOf(selectedValue)} from string`
+												: typeOf(selectedValue)
+											: "—"}
 									</span>
 								</div>
 								<div className="inspector-path">
