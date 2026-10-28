@@ -565,7 +565,7 @@ textarea::placeholder {
   height: 38px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--canvas);
+  background: #fff;
   display: flex;
   align-items: center;
   gap: 8px;
