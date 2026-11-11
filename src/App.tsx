@@ -132,11 +132,25 @@ const signedImageDownload = (value: string) => {
 	}
 	return keys.has("sig") && (keys.has("se") || keys.has("sv"));
 };
-const downloadUrl = (value: string) => {
-	if (typeof window === "undefined" || window.location.protocol !== "https:")
-		return value;
-	return value.replace(/^http:\/\//i, "https://");
-};
+// Some producers escape the colon in URLs even though \: is not a JSON escape.
+// Only repair that escape inside strings, and leave valid JSON untouched.
+function parseJson(source: string): JsonValue {
+	try {
+		return JSON.parse(source) as JsonValue;
+	} catch (originalError) {
+		const repaired = source.replace(/"(?:[^"\\]|\\.)*"/g, (string) =>
+			string.replace(/\\(?:\\|.)/g, (escape) =>
+				escape === "\\:" ? ":" : escape,
+			),
+		);
+		if (repaired === source) throw originalError;
+		try {
+			return JSON.parse(repaired) as JsonValue;
+		} catch {
+			throw originalError;
+		}
+	}
+}
 const embeddedJsonNodes = new WeakSet<object>();
 const MAX_EMBEDDED_JSON_DEPTH = 8;
 const fencedJson = (text: string) => {
@@ -152,7 +166,7 @@ const parseEmbeddedJson = (value: string): JsonValue | undefined => {
 	if (!((open === "{" && close === "}") || (open === "[" && close === "]")))
 		return undefined;
 	try {
-		const parsed = JSON.parse(source) as JsonValue;
+		const parsed = parseJson(source);
 		return parsed !== null && typeof parsed === "object" ? parsed : undefined;
 	} catch {
 		return undefined;
@@ -422,7 +436,7 @@ function TreeNode({
 							"
 							<a
 								className="tree-link"
-								href={directDownload ? downloadUrl(href) : href}
+								href={href}
 								target={directDownload ? "_self" : "_blank"}
 								rel={directDownload ? "noreferrer" : "noreferrer noopener"}
 								title={directDownload ? "Download image" : undefined}
@@ -530,7 +544,7 @@ export default function App() {
 
 	function parse(source = input, announce = true) {
 		try {
-			const parsed = revealEmbeddedJson(JSON.parse(source) as JsonValue);
+			const parsed = revealEmbeddedJson(parseJson(source));
 			setValue(parsed);
 			setHasParsed(true);
 			setDirty(false);
@@ -562,7 +576,7 @@ export default function App() {
 
 	function transform(pretty: boolean) {
 		try {
-			const parsed = JSON.parse(input) as JsonValue;
+			const parsed = parseJson(input);
 			setInput(JSON.stringify(parsed, null, pretty ? 2 : undefined));
 			setIssue(null);
 			setDirty(true);
