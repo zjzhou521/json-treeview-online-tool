@@ -4,6 +4,7 @@ import {
 	useState,
 	type ClipboardEvent,
 	type KeyboardEvent,
+	type MouseEvent,
 } from "react";
 import {
 	Braces,
@@ -40,6 +41,7 @@ type ParseIssue = { message: string; location?: string };
 type ExpansionPreset = 0 | 1 | 2 | 3 | 4 | "all";
 
 const DEFAULT_EXPANSION: ExpansionPreset = 2;
+const EXPANSION_STORAGE_KEY = "json-tree-viewer-expansion";
 const EXPANSION_OPTIONS: { value: ExpansionPreset; label: string }[] = [
 	{ value: 0, label: "Collapse all" },
 	{ value: 1, label: "1 level" },
@@ -48,6 +50,16 @@ const EXPANSION_OPTIONS: { value: ExpansionPreset; label: string }[] = [
 	{ value: 4, label: "4 levels" },
 	{ value: "all", label: "All levels" },
 ];
+
+function savedExpansion(): ExpansionPreset {
+	try {
+		const saved = localStorage.getItem(EXPANSION_STORAGE_KEY);
+		return EXPANSION_OPTIONS.find((option) => String(option.value) === saved)
+			?.value ?? DEFAULT_EXPANSION;
+	} catch {
+		return DEFAULT_EXPANSION;
+	}
+}
 
 const SAMPLE = `{
   "project": "Northstar API",
@@ -132,6 +144,34 @@ const signedImageDownload = (value: string) => {
 	}
 	return keys.has("sig") && (keys.has("se") || keys.has("sv"));
 };
+async function downloadImage(event: MouseEvent<HTMLAnchorElement>, href: string) {
+	// Open the fallback during the click so popup blockers do not prevent it.
+	const fallback = window.open("", "_blank");
+	if (!fallback) return;
+	event.preventDefault();
+	fallback.opener = null;
+	try {
+		const response = await fetch(href);
+		if (!response.ok) throw new Error("Image request failed");
+		const blob = await response.blob();
+		const objectUrl = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = objectUrl;
+		const filename = new URL(href).pathname.split("/").pop() || "image";
+		try {
+			link.download = decodeURIComponent(filename);
+		} catch {
+			link.download = filename;
+		}
+		document.body.appendChild(link);
+		link.click();
+		link.remove();
+		setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+		fallback.close();
+	} catch {
+		fallback.location.href = href;
+	}
+}
 // Some producers escape the colon in URLs even though \: is not a JSON escape.
 // Only repair that escape inside strings, and leave valid JSON untouched.
 function parseJson(source: string): JsonValue {
@@ -437,10 +477,14 @@ function TreeNode({
 							<a
 								className="tree-link"
 								href={href}
-								target={directDownload ? "_self" : "_blank"}
-								rel={directDownload ? "noreferrer" : "noreferrer noopener"}
+								target="_blank"
+								rel="noreferrer noopener"
 								title={directDownload ? "Download image" : undefined}
-								onClick={(event) => event.stopPropagation()}
+								onClick={(event) => {
+									event.stopPropagation();
+									if (directDownload && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey)
+										void downloadImage(event, href);
+								}}
 							>
 								{JSON.stringify(value).slice(1, -1)}
 							</a>
@@ -503,7 +547,7 @@ export default function App() {
 	const [dirty, setDirty] = useState(false);
 	const [issue, setIssue] = useState<ParseIssue | null>(null);
 	const [expansionPreset, setExpansionPreset] =
-		useState<ExpansionPreset>(DEFAULT_EXPANSION);
+		useState<ExpansionPreset>(savedExpansion);
 	const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
 	const [selectedPath, setSelectedPath] = useState<Path>([]);
 	const [query, setQuery] = useState("");
@@ -638,6 +682,11 @@ export default function App() {
 
 	function applyExpansion(preset: ExpansionPreset) {
 		setExpansionPreset(preset);
+		try {
+			localStorage.setItem(EXPANSION_STORAGE_KEY, String(preset));
+		} catch {
+			// The viewer still works when browser storage is unavailable.
+		}
 		setExpanded(expandedFor(value, preset));
 	}
 
